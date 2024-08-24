@@ -23,7 +23,7 @@ function interactionLoop(userInput, rl, logStream) {
             process.stdout.write('\r' + ' '.repeat(10) + '\r');
             logStream.write(`User: ${userInput}\nAI: ${aiResponse.responseToUser}\n`);
 
-            console.log(`${aiResponse.responseToUser}\n`);
+            console.log(`\n\n${aiResponse.responseToUser}\n\n`);
 
             if (aiResponse.executeCommand) {
                 confirmAndExecute(aiResponse.executeCommand, rl, (feedback) => {

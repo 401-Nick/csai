@@ -1,3 +1,5 @@
+KEEP IN MIND YOU ARE DISCLOSING ALL INFORMATION TO OPENAI. THIS IS NOT A SECURE APPLICATION. DO NOT USE THIS APPLICATION FOR ANYTHING THAT REQUIRES SECURITY. THIS IS A LEARNING PROJECT AND SHOULD BE TREATED AS SUCH.
+
 Cybersecurity Assistant CLI
 
 This is a command-line interface (CLI) application designed to interact with a cybersecurity assistant powered by OpenAI's GPT-4. The assistant can execute system commands and provide detailed explanations, helping users perform cybersecurity tasks on Windows and Linux systems.
@@ -39,3 +41,5 @@ Usage
 
 3. Session Logs:
    - All interactions are logged in the `logs/` directory. Each session log is named with a timestamp for easy reference.
+
+   be good plz!
