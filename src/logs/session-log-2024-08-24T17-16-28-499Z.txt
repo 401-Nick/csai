@@ -1,6 +1,0 @@
-Session started at 2024-08-24T17:16:28.502Z
-User: Hey
-AI: Hello! How can I assist you with your cybersecurity needs today?
-User: run nmap
-AI: In order to run an nmap scan, I need the target IP address or domain name that you want to scan. Please provide it.
-Session ended at 2024-08-24T17:17:08.511Z
