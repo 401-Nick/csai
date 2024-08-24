@@ -1,20 +1,12 @@
 const { spawn } = require('child_process');
 const OpenAI = require('openai');
-const winston = require('winston');
+const os = require('os');
 require('dotenv').config();
+const logger = require('./logger');
 
-// Logger setup
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-    ),
-    transports: [
-        new winston.transports.File({ filename: 'logs/app.log' }),
-        new winston.transports.Console()
-    ],
-});
+// Determine the operating system
+const platform = os.platform();
+const isWindows = platform === 'win32';
 
 // Initialize OpenAI client
 let openai;
@@ -40,8 +32,9 @@ function addToMemory(message) {
     }
 }
 
-const systemPrompt = `
-You are a cybersecurity assistant with the ability to execute commands on a Windows command prompt or terminal.
+// Define system prompts based on the operating system
+const commonPrompt = `
+You are a cybersecurity assistant with the ability to execute commands on a ${isWindows ? 'Windows' : 'Linux'} system.
 Your goal is to help the user securely and effectively.
 Always respond in the following JSON format:
 {
@@ -49,8 +42,10 @@ Always respond in the following JSON format:
     "executeCommand": "The exact command to be run or an empty string if no command is needed."
 }
 Keep commands minimal and safe.
+`;
 
-Your main commands for windows are:
+const windowsCommands = `
+Your available commands are:
 - dir
 - cd
 - cls
@@ -64,8 +59,10 @@ Your main commands for windows are:
 - net localgroup
 - net start
 - net stop
+`;
 
-Your main commands for linux are:
+const linuxCommands = `
+Your available commands are:
 - ls
 - cd
 - clear
@@ -78,8 +75,10 @@ Your main commands for linux are:
 - whoami
 - groups
 - systemctl
+`;
 
-Your main tools are:
+const toolsList = `
+Your available tools are:
 - nmap
 - wireshark
 - metasploit
@@ -93,6 +92,8 @@ Your main tools are:
 - wpscan
 `;
 
+const systemPrompt = commonPrompt + (isWindows ? windowsCommands : linuxCommands) + toolsList;
+
 async function getCommandFromAI(userInput) {
     const MAX_RETRIES = 3;
     let attempt = 0;
@@ -102,27 +103,26 @@ async function getCommandFromAI(userInput) {
         try {
             if (attempt > 0) {
                 logger.warn('Retrying with a reminder to respond in JSON format.');
-                addToMemory({ role: 'system', content: systemPrompt });
-            } else {
-                addToMemory({ role: 'user', content: userInput });
             }
 
+            const messages = [
+                { role: 'system', content: systemPrompt },
+                ...memory,
+                { role: 'user', content: userInput }
+            ];
+
             const completion = await openai.chat.completions.create({
-                model: "gpt-4",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    ...memory
-                ],
+                model: 'gpt-4',
+                messages: messages,
+                temperature: 0.5,
             });
 
             const response = completion.choices[0].message;
             if (!response) throw new Error('No response from OpenAI API.');
 
-            // logger.info('AI Response:', response.content);
-
             parsedResponse = JSON.parse(response.content);
 
-            if (parsedResponse.responseToUser !== undefined && parsedResponse.executeCommand !== undefined) {
+            if (typeof parsedResponse.responseToUser === 'string' && typeof parsedResponse.executeCommand === 'string') {
                 addToMemory({ role: 'assistant', content: response.content });
                 return parsedResponse;
             } else {
@@ -142,11 +142,11 @@ async function getCommandFromAI(userInput) {
     }
 }
 
-function executeCommand(command, callback) {
-    // logger.info(`Executing command: ${command}`);
+function executeCommand(command, callback, logStream) {
+    logger.info(`Executing command: ${command}`);
+    logStream.write(`Executing command: ${command}\n`);
 
-    const [mainCommand, ...args] = command.split(' ');
-    const spawnedProcess = spawn(mainCommand, args, { shell: true });
+    const spawnedProcess = spawn(command, { shell: true });
 
     let stdoutData = '';
     let stderrData = '';
@@ -160,7 +160,12 @@ function executeCommand(command, callback) {
     });
 
     spawnedProcess.on('close', (code) => {
-        let feedback = code === 0 ? stdoutData || 'Command executed successfully with no output.' : stderrData || `Command exited with code ${code}.`;
+        const feedback = code === 0
+            ? stdoutData || 'Command executed successfully with no output.'
+            : stderrData || `Command exited with code ${code}.`;
+
+        logger.info(`Command "${command}" executed with feedback: ${feedback.trim()}`);
+        logStream.write(`Command "${command}" executed with feedback: ${feedback.trim()}\n`);
 
         addToMemory({
             role: 'user',
@@ -171,21 +176,25 @@ function executeCommand(command, callback) {
     });
 
     spawnedProcess.on('error', (error) => {
-        logger.error(`Failed to start command "${command}": ${error.message}`);
+        const errorMessage = `Failed to start command "${command}": ${error.message}`;
+        logger.error(errorMessage);
+        logStream.write(`${errorMessage}\n`);
+
         addToMemory({
             role: 'user',
-            content: `Failed to execute command "${command}": ${error.message}`
+            content: errorMessage
         });
         callback(`Error: ${error.message}`);
     });
 }
 
-function confirmAndExecute(command, rl, callback) {
+function confirmAndExecute(command, rl, callback, logStream) {
     rl.question(`Are you sure you want to execute the following command: "${command}"? (yes/no): `, (answer) => {
         if (['yes', 'y'].includes(answer.trim().toLowerCase())) {
-            executeCommand(command, callback);
+            executeCommand(command, callback, logStream);
         } else {
-            // logger.info('Command execution cancelled by user.');
+            logger.info('Command execution cancelled by user.');
+            logStream.write('Command execution cancelled by user.\n');
             callback(null);
         }
     });

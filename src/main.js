@@ -2,26 +2,26 @@ const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
 const { getCommandFromAI, confirmAndExecute } = require('./aiAssistant');
-const winston = require('winston');
+const logger = require('./logger');
 
-// Logger setup
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-    ),
-    transports: [
-        new winston.transports.File({ filename: 'logs/session.log' }),
-        new winston.transports.Console()
-    ],
-});
+function showLoadingIndicator() {
+    const loadingStates = ['.', '..', '...'];
+    let currentState = 0;
+    
+    return setInterval(() => {
+        process.stdout.write(`\rLoading${loadingStates[currentState]}`);
+        currentState = (currentState + 1) % loadingStates.length;
+    }, 500);
+}
 
 function interactionLoop(userInput, rl, logStream) {
+    const loadingInterval = showLoadingIndicator();
+
     getCommandFromAI(userInput)
         .then((aiResponse) => {
+            clearInterval(loadingInterval);
+            process.stdout.write('\r' + ' '.repeat(10) + '\r');
             logStream.write(`User: ${userInput}\nAI: ${aiResponse.responseToUser}\n`);
-            // logger.info('AI Response:', aiResponse.responseToUser);
 
             console.log(`${aiResponse.responseToUser}\n`);
 
@@ -32,12 +32,14 @@ function interactionLoop(userInput, rl, logStream) {
                     } else {
                         rl.question('How can I assist you further? ', (input) => interactionLoop(input, rl, logStream));
                     }
-                });
+                }, logStream);
             } else {
                 rl.question('\n\nHow can I assist you further?: ', (input) => interactionLoop(input, rl, logStream));
             }
         })
         .catch((error) => {
+            clearInterval(loadingInterval);
+            process.stdout.write('\r' + ' '.repeat(10) + '\r');
             logger.error('An unexpected error occurred:', error.message);
             logStream.write(`Error: ${error.message}\n`);
             rl.close();
