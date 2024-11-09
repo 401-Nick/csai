@@ -4,6 +4,8 @@ Cybersecurity Assistant CLI
 
 This is a command-line interface (CLI) application designed to interact with a cybersecurity assistant powered by OpenAI's GPT-4. The assistant can execute system commands and provide detailed explanations, helping users perform cybersecurity tasks on Windows and Linux systems.
 
+![Example](example.png)
+
 Features
 
 - AI-Powered Assistance: Interact with an AI assistant that can execute system commands securely and effectively.
@@ -18,17 +20,18 @@ Prerequisites
 Installation
 
 1. Clone the repository:
-   git clone https://github.com/401-Nick/csai.git
-   cd csai
+   ```git clone https://github.com/401-Nick/csai.git```
+   ```cd csai```
 
 2. Install dependencies:
-   npm install
+   ```npm install```
 
 3. Set up your OpenAI API key:
    - Create a `.env` file in the project root:
-     touch .env
+     ```touch .env```
+
    - Add your OpenAI API key to the `.env` file:
-     OPENAI_API_KEY="your-api-key-here"
+    ```OPENAI_API_KEY="your-api-key-here"```
 
 Usage
 
